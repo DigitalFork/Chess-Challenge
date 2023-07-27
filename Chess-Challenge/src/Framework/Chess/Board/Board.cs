@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace ChessChallenge.Chess
-{
+namespace ChessChallenge.Chess {
     // Represents the current state of the board during a game.
     // The state includes things such as: positions of all pieces, side to move,
     // castling rights, en-passant square, etc. Some extra information is included
@@ -10,8 +9,7 @@ namespace ChessChallenge.Chess
     // The initial state of the board can be set from a FEN string, and moves are
     // subsequently made (or undone) using the MakeMove and UnmakeMove functions.
 
-    public sealed class Board
-    {
+    public sealed class Board {
 
         public ulong ZobristKey => currentGameState.zobristKey;
         public const int WhiteIndex = 0;
@@ -68,10 +66,8 @@ namespace ChessChallenge.Chess
 
 
 
-        public Board(Board source = null)
-        {
-            if (source != null)
-            {
+        public Board(Board source = null) {
+            if (source != null) {
                 string fen = FenUtility.CurrentFen(source);
                 LoadPosition(fen);
 
@@ -87,10 +83,8 @@ namespace ChessChallenge.Chess
 
         // Is current player in check?
         // Note: caches check value so calling multiple times does not require recalculating
-        public bool IsInCheck()
-        {
-            if (hasCachedInCheckValue)
-            {
+        public bool IsInCheck() {
+            if (hasCachedInCheckValue) {
                 return cachedInCheckValue;
             }
             cachedInCheckValue = CalculateInCheckState();
@@ -106,8 +100,7 @@ namespace ChessChallenge.Chess
         // 2. Movement of rook when castling
         // 3. Removal of pawn from 1st/8th rank during pawn promotion
         // 4. Addition of promoted piece during pawn promotion
-        void MovePiece(int piece, int startSquare, int targetSquare)
-        {
+        void MovePiece(int piece, int startSquare, int targetSquare) {
             BitBoardUtility.ToggleSquares(ref pieceBitboards[piece], startSquare, targetSquare);
             BitBoardUtility.ToggleSquares(ref colourBitboards[MoveColourIndex], startSquare, targetSquare);
 
@@ -119,8 +112,7 @@ namespace ChessChallenge.Chess
         // Make a move on the board
         // The inSearch parameter controls whether this move should be recorded in the game history.
         // (for detecting three-fold repetition)
-        public void MakeMove(Move move, bool inSearch = true)
-        {
+        public void MakeMove(Move move, bool inSearch = true) {
             // Get info about move
             int startSquare = move.StartSquareIndex;
             int targetSquare = move.TargetSquareIndex;
@@ -143,17 +135,14 @@ namespace ChessChallenge.Chess
             MovePiece(movedPiece, startSquare, targetSquare);
 
             // Handle captures
-            if (capturedPieceType != PieceHelper.None)
-            {
+            if (capturedPieceType != PieceHelper.None) {
                 int captureSquare = targetSquare;
 
-                if (isEnPassant)
-                {
+                if (isEnPassant) {
                     captureSquare = targetSquare + (IsWhiteToMove ? -8 : 8);
                     Square[captureSquare] = PieceHelper.None;
                 }
-                if (capturedPieceType != PieceHelper.Pawn)
-                {
+                if (capturedPieceType != PieceHelper.Pawn) {
                     totalPieceCountWithoutPawnsAndKings--;
                 }
 
@@ -165,14 +154,12 @@ namespace ChessChallenge.Chess
             }
 
             // Handle king
-            if (movedPieceType == PieceHelper.King)
-            {
+            if (movedPieceType == PieceHelper.King) {
                 KingSquare[MoveColourIndex] = targetSquare;
                 newCastlingRights &= (IsWhiteToMove) ? 0b1100 : 0b0011;
 
                 // Handle castling
-                if (moveFlag == Move.CastleFlag)
-                {
+                if (moveFlag == Move.CastleFlag) {
                     int rookPiece = PieceHelper.MakePiece(PieceHelper.Rook, MoveColour);
                     bool kingside = targetSquare == BoardHelper.g1 || targetSquare == BoardHelper.g8;
                     int castlingRookFromIndex = (kingside) ? targetSquare + 1 : targetSquare - 2;
@@ -191,11 +178,9 @@ namespace ChessChallenge.Chess
             }
 
             // Handle promotion
-            if (isPromotion)
-            {
+            if (isPromotion) {
                 totalPieceCountWithoutPawnsAndKings++;
-                int promotionPieceType = moveFlag switch
-                {
+                int promotionPieceType = moveFlag switch {
                     Move.PromoteToQueenFlag => PieceHelper.Queen,
                     Move.PromoteToRookFlag => PieceHelper.Rook,
                     Move.PromoteToKnightFlag => PieceHelper.Knight,
@@ -214,31 +199,23 @@ namespace ChessChallenge.Chess
             }
 
             // Pawn has moved two forwards, mark file with en-passant flag
-            if (moveFlag == Move.PawnTwoUpFlag)
-            {
+            if (moveFlag == Move.PawnTwoUpFlag) {
                 int file = BoardHelper.FileIndex(startSquare) + 1;
                 newEnPassantFile = file;
                 newZobristKey ^= Zobrist.enPassantFile[file];
             }
 
             // Update castling rights
-            if (prevCastleState != 0)
-            {
+            if (prevCastleState != 0) {
                 // Any piece moving to/from rook square removes castling right for that side
-                if (targetSquare == BoardHelper.h1 || startSquare == BoardHelper.h1)
-                {
+                if (targetSquare == BoardHelper.h1 || startSquare == BoardHelper.h1) {
                     newCastlingRights &= GameState.ClearWhiteKingsideMask;
-                }
-                else if (targetSquare == BoardHelper.a1 || startSquare == BoardHelper.a1)
-                {
+                } else if (targetSquare == BoardHelper.a1 || startSquare == BoardHelper.a1) {
                     newCastlingRights &= GameState.ClearWhiteQueensideMask;
                 }
-                if (targetSquare == BoardHelper.h8 || startSquare == BoardHelper.h8)
-                {
+                if (targetSquare == BoardHelper.h8 || startSquare == BoardHelper.h8) {
                     newCastlingRights &= GameState.ClearBlackKingsideMask;
-                }
-                else if (targetSquare == BoardHelper.a8 || startSquare == BoardHelper.a8)
-                {
+                } else if (targetSquare == BoardHelper.a8 || startSquare == BoardHelper.a8) {
                     newCastlingRights &= GameState.ClearBlackQueensideMask;
                 }
             }
@@ -249,8 +226,7 @@ namespace ChessChallenge.Chess
             newZobristKey ^= Zobrist.piecesArray[Square[targetSquare], targetSquare];
             newZobristKey ^= Zobrist.enPassantFile[prevEnPassantFile];
 
-            if (newCastlingRights != prevCastleState)
-            {
+            if (newCastlingRights != prevCastleState) {
                 newZobristKey ^= Zobrist.castlingRights[prevCastleState]; // remove old castling rights state
                 newZobristKey ^= Zobrist.castlingRights[newCastlingRights]; // add new castling rights state
             }
@@ -266,10 +242,8 @@ namespace ChessChallenge.Chess
             UpdateSliderBitboards();
 
             // Pawn moves and captures reset the fifty move counter and clear 3-fold repetition history
-            if (movedPieceType == PieceHelper.Pawn || capturedPieceType != PieceHelper.None)
-            {
-                if (!inSearch)
-                {
+            if (movedPieceType == PieceHelper.Pawn || capturedPieceType != PieceHelper.None) {
+                if (!inSearch) {
                     RepetitionPositionHistory.Clear();
                 }
                 newFiftyMoveCounter = 0;
@@ -280,16 +254,14 @@ namespace ChessChallenge.Chess
             currentGameState = newState;
             hasCachedInCheckValue = false;
 
-            if (!inSearch)
-            {
+            if (!inSearch) {
                 RepetitionPositionHistory.Push(newState.zobristKey);
                 AllGameMoves.Add(move);
             }
         }
 
         // Undo a move previously made on the board
-        public void UndoMove(Move move, bool inSearch = true)
-        {
+        public void UndoMove(Move move, bool inSearch = true) {
             // Swap colour to move
             IsWhiteToMove = !IsWhiteToMove;
 
@@ -309,8 +281,7 @@ namespace ChessChallenge.Chess
             int capturedPieceType = currentGameState.capturedPieceType;
 
             // If undoing promotion, then remove piece from promotion square and replace with pawn
-            if (undoingPromotion)
-            {
+            if (undoingPromotion) {
                 int promotedPiece = Square[movedTo];
                 int pawnPiece = PieceHelper.MakePiece(PieceHelper.Pawn, MoveColour);
                 totalPieceCountWithoutPawnsAndKings--;
@@ -324,17 +295,14 @@ namespace ChessChallenge.Chess
             MovePiece(movedPiece, movedTo, movedFrom);
 
             // Undo capture
-            if (undoingCapture)
-            {
+            if (undoingCapture) {
                 int captureSquare = movedTo;
                 int capturedPiece = PieceHelper.MakePiece(capturedPieceType, OpponentColour);
 
-                if (undoingEnPassant)
-                {
+                if (undoingEnPassant) {
                     captureSquare = movedTo + ((undoingWhiteMove) ? -8 : 8);
                 }
-                if (capturedPieceType != PieceHelper.Pawn)
-                {
+                if (capturedPieceType != PieceHelper.Pawn) {
                     totalPieceCountWithoutPawnsAndKings++;
                 }
 
@@ -347,13 +315,11 @@ namespace ChessChallenge.Chess
 
 
             // Update king
-            if (movedPieceType is PieceHelper.King)
-            {
+            if (movedPieceType is PieceHelper.King) {
                 KingSquare[MoveColourIndex] = movedFrom;
 
                 // Undo castling
-                if (moveFlag is Move.CastleFlag)
-                {
+                if (moveFlag is Move.CastleFlag) {
                     int rookPiece = PieceHelper.MakePiece(PieceHelper.Rook, MoveColour);
                     bool kingside = movedTo == BoardHelper.g1 || movedTo == BoardHelper.g8;
                     int rookSquareBeforeCastling = kingside ? movedTo + 1 : movedTo - 2;
@@ -371,12 +337,10 @@ namespace ChessChallenge.Chess
             allPiecesBitboard = colourBitboards[WhiteIndex] | colourBitboards[BlackIndex];
             UpdateSliderBitboards();
 
-            if (!inSearch && RepetitionPositionHistory.Count > 0)
-            {
+            if (!inSearch && RepetitionPositionHistory.Count > 0) {
                 RepetitionPositionHistory.Pop();
             }
-            if (!inSearch)
-            {
+            if (!inSearch) {
                 AllGameMoves.RemoveAt(AllGameMoves.Count - 1);
             }
 
@@ -388,8 +352,7 @@ namespace ChessChallenge.Chess
         }
 
         // Switch side to play without making a move (NOTE: must not be in check when called)
-        public void MakeNullMove()
-        {
+        public void MakeNullMove() {
             IsWhiteToMove = !IsWhiteToMove;
 
             plyCount++;
@@ -406,8 +369,7 @@ namespace ChessChallenge.Chess
             cachedInCheckValue = false;
         }
 
-        public void UnmakeNullMove()
-        {
+        public void UnmakeNullMove() {
 
             IsWhiteToMove = !IsWhiteToMove;
             plyCount--;
@@ -422,38 +384,31 @@ namespace ChessChallenge.Chess
 
         // Calculate in check value
         // Call IsInCheck instead for automatic caching of value
-        public bool CalculateInCheckState()
-        {
+        public bool CalculateInCheckState() {
             int kingSquare = KingSquare[MoveColourIndex];
             ulong blockers = allPiecesBitboard;
 
-            if (EnemyOrthogonalSliders != 0)
-            {
+            if (EnemyOrthogonalSliders != 0) {
                 ulong rookAttacks = Magic.GetRookAttacks(kingSquare, blockers);
-                if ((rookAttacks & EnemyOrthogonalSliders) != 0)
-                {
+                if ((rookAttacks & EnemyOrthogonalSliders) != 0) {
                     return true;
                 }
             }
-            if (EnemyDiagonalSliders != 0)
-            {
+            if (EnemyDiagonalSliders != 0) {
                 ulong bishopAttacks = Magic.GetBishopAttacks(kingSquare, blockers);
-                if ((bishopAttacks & EnemyDiagonalSliders) != 0)
-                {
+                if ((bishopAttacks & EnemyDiagonalSliders) != 0) {
                     return true;
                 }
             }
 
             ulong enemyKnights = pieceBitboards[PieceHelper.MakePiece(PieceHelper.Knight, OpponentColour)];
-            if ((Bits.KnightAttacks[kingSquare] & enemyKnights) != 0)
-            {
+            if ((Bits.KnightAttacks[kingSquare] & enemyKnights) != 0) {
                 return true;
             }
 
             ulong enemyPawns = pieceBitboards[PieceHelper.MakePiece(PieceHelper.Pawn, OpponentColour)];
             ulong pawnAttackMask = IsWhiteToMove ? Bits.WhitePawnAttacks[kingSquare] : Bits.BlackPawnAttacks[kingSquare];
-            if ((pawnAttackMask & enemyPawns) != 0)
-            {
+            if ((pawnAttackMask & enemyPawns) != 0) {
                 return true;
             }
 
@@ -462,33 +417,28 @@ namespace ChessChallenge.Chess
 
 
         // Load the starting position
-        public void LoadStartPosition()
-        {
+        public void LoadStartPosition() {
             LoadPosition(FenUtility.StartPositionFEN);
         }
 
         // Load custom position from fen string
-        public void LoadPosition(string fen)
-        {
+        public void LoadPosition(string fen) {
             Initialize();
             GameStartFen = fen;
             FenUtility.PositionInfo posInfo = FenUtility.PositionFromFen(fen);
 
             // Load pieces into board array and piece lists
-            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-            {
+            for (int squareIndex = 0; squareIndex < 64; squareIndex++) {
                 int piece = posInfo.squares[squareIndex];
                 int pieceType = PieceHelper.PieceType(piece);
                 int colourIndex = PieceHelper.IsWhite(piece) ? WhiteIndex : BlackIndex;
                 Square[squareIndex] = piece;
 
-                if (piece != PieceHelper.None)
-                {
+                if (piece != PieceHelper.None) {
                     BitBoardUtility.SetSquare(ref pieceBitboards[piece], squareIndex);
                     BitBoardUtility.SetSquare(ref colourBitboards[colourIndex], squareIndex);
 
-                    if (pieceType == PieceHelper.King)
-                    {
+                    if (pieceType == PieceHelper.King) {
                         KingSquare[colourIndex] = squareIndex;
                     }
 
@@ -522,8 +472,7 @@ namespace ChessChallenge.Chess
             gameStateHistory.Push(currentGameState);
         }
 
-        void UpdateSliderBitboards()
-        {
+        void UpdateSliderBitboards() {
             int friendlyRook = PieceHelper.MakePiece(PieceHelper.Rook, MoveColour);
             int friendlyQueen = PieceHelper.MakePiece(PieceHelper.Queen, MoveColour);
             int friendlyBishop = PieceHelper.MakePiece(PieceHelper.Bishop, MoveColour);
@@ -537,8 +486,7 @@ namespace ChessChallenge.Chess
             EnemyDiagonalSliders = pieceBitboards[enemyBishop] | pieceBitboards[enemyQueen];
         }
 
-        void Initialize()
-        {
+        void Initialize() {
             AllGameMoves = new List<Move>();
             Square = new int[64];
             KingSquare = new int[2];
