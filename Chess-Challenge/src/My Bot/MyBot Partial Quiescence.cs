@@ -1,4 +1,4 @@
-﻿using ChessChallenge.API;
+﻿/*using ChessChallenge.API;
 using static ChessChallenge.API.BitboardHelper;
 using System;
 using static System.Math;
@@ -14,36 +14,35 @@ public class MyBot : IChessBot {
     readonly int[] KingFileValues = { -50, -25, 0, -5 };
 
 
-    /*int positions;
+    int positions;
     int transpositions;
     int transpositionOverwrites;
-    int betaCutoffs;*/
+    int betaCutoffs;
 
     Timer timer;
     Move RootBestMove;
     const int MaxIterations = 20;
-    const int MaxTime = 1450;
-    readonly Move NullMove = Move.NullMove;
+    const int MaxTime = 1000;
 
-    (ulong Key, int SearchDepth, int Eval, Move Move, bool FullSearch)[] transposition = new (ulong, int, int, Move, bool)[1048576];
+    (ulong Key,  int SearchDepth, int Eval, Move Move, bool FullSearch)[] transposition = new (ulong, int, int, Move, bool)[1048576];
 
     public Move Think(Board board, Timer turnTimer) {
         timer = turnTimer;
-        /*positions = 0;
+        *//*positions = 0;
         transpositions = 0;
         transpositionOverwrites = 0;
-        betaCutoffs = 0;*/
-        RootBestMove = NullMove;
-        int alpha = -1073741823;
-        int beta = 1073741823;
-        bool fullSearch = false;
-
+        betaCutoffs = 0; *//*
+        bool isWhite = board.IsWhiteToMove;
+        RootBestMove = Move.NullMove;
         int eval = -1073741823;
+        int alpha = eval;
+        int beta = -eval;
+        bool fullSearch = false;
 
         int currentDepth = 0;
         while (currentDepth < 7 && timer.MillisecondsElapsedThisTurn < MaxTime) {
             (Move newBestMove, int newEval) = GetBestMove(board, currentDepth, 0, alpha, beta, fullSearch);
-            if (newEval <= alpha || newEval >= beta || newBestMove == NullMove) {
+            if (newEval <= alpha || newEval >= beta || newBestMove == Move.NullMove) {
                 alpha = -1073741823;
                 beta = 1073741823;
                 fullSearch = true;
@@ -55,25 +54,20 @@ public class MyBot : IChessBot {
             fullSearch = false;
             currentDepth++;
             RootBestMove = newBestMove;
-            if (newEval >= 500000000) {
-                break;
-            }
             eval = newEval;
         }
         Console.WriteLine("Depth Searched: {0}, time taken: {1}", currentDepth, timer.MillisecondsElapsedThisTurn);
-        Console.WriteLine("Eval from Search: {0}", eval);
-        /*Console.WriteLine("Positions Evaluated: {0}", positions);
-        Console.WriteLine("Transpositions Found: {0}", transpositions);
-        Console.WriteLine("Transpositions Overwrote: {0}", transpositionOverwrites);
-        Console.WriteLine("Beta cutoffs reached: {0}", betaCutoffs);
-        Console.WriteLine();*/
 
-        /*Console.WriteLine("Eval function before move: {0}", Evaluate(board));
+        Console.WriteLine("Eval from Search: {0}", eval);
+        *//*Console.WriteLine("Eval function before move: {0}", Evaluate(board));
         board.MakeMove(RootBestMove);
         Console.WriteLine("Eval function after move: {0}", -Evaluate(board));
         Console.WriteLine();
-        bool isWhite = board.IsWhiteToMove;
-        */
+        *//*Console.WriteLine("Positions Evaluated: {0}", positions);*//* 
+        Console.WriteLine("Transpositions Found: {0}", transpositions);
+        Console.WriteLine("Transpositions Overwrote: {0}", transpositionOverwrites);
+        Console.WriteLine("Beta cutoffs reached: {0}", betaCutoffs);
+        Console.WriteLine();*//*
 
         return RootBestMove;
     }
@@ -82,29 +76,29 @@ public class MyBot : IChessBot {
         ulong index = board.ZobristKey % 1048576;
 
         if (board.IsInCheckmate()) {
-            return (NullMove, -536870911);
+            return (Move.NullMove, -536870911);
         }
         if (board.IsDraw()) {
-            return (NullMove, 0);
+            return (Move.NullMove, 0);
         }
 
 
         if (transposition[index].Key == board.ZobristKey && transposition[index].SearchDepth >= depth && (!fullSearch || transposition[index].FullSearch)) {
-            // transpositions++;
+            transpositions++;
             return (transposition[index].Move, transposition[index].Eval);
         }
 
-        Move bestMove = NullMove;
+        Move bestMove = Move.NullMove;
 
-        Move[] moves = OrderMoves(board, board.GetLegalMoves(), iterations == 0 ? RootBestMove : transposition[index].Move, depth < 0);
+        Move[] moves = OrderMoves(board, board.GetLegalMoves(depth < 0), iterations == 0 ? RootBestMove : transposition[index].Move);
 
-        if (moves.Length == 0 || depth < -4 || iterations >= MaxIterations) {
-            return (NullMove, Evaluate(board));
+        if (moves.Length == 0 || depth <= -4 || iterations >= MaxIterations) {
+            return (Move.NullMove, Evaluate(board));
         }
 
 
         foreach (Move move in moves) {
-            // positions++;
+            positions++;
             bool iterate = true;
             int newEval = -1073741823;
             board.MakeMove(move);
@@ -125,22 +119,20 @@ public class MyBot : IChessBot {
 
             }
             if (iterate) {
-                (Move newMove, newEval) = GetBestMove(board, depth - 1, iterations + 1, -beta, -alpha, fullSearch);
+                (Move newMove, newEval) = GetBestMove(board, depth - (board.IsInCheck() || move.IsPromotion ? 0 : 1), iterations + 1, -beta, -alpha, fullSearch);
                 newEval = -newEval;
             }
-
+            
             board.UndoMove(move);
 
             if (timer.MillisecondsElapsedThisTurn >= MaxTime) {
-                if (iterations == 0) { break; } else { return (Move.NullMove, 0); };
+                if (iterations == 0) { break; } 
+                else { return (Move.NullMove, 0); };
             }
-            /*if (timer.MillisecondsElapsedThisTurn >= MaxTime) {
-                return (NullMove, 0);
-            }*/
 
 
             if (newEval >= beta) {
-                // betaCutoffs++;
+                betaCutoffs++;
                 return (move, beta);
             }
             if (newEval > alpha) {
@@ -150,33 +142,28 @@ public class MyBot : IChessBot {
 
         }
 
-        // if (transposition[index].Key != 0) { transpositionOverwrites++; }
-        if (timer.MillisecondsElapsedThisTurn < MaxTime && depth >= 0) { transposition[index] = (board.ZobristKey, depth, alpha, bestMove, fullSearch); }
+        if (transposition[index].Key != 0) { transpositionOverwrites++; }
+        if (timer.MillisecondsElapsedThisTurn < MaxTime) { transposition[index] = (board.ZobristKey, depth, alpha, bestMove, fullSearch); }
         return (bestMove, alpha);
     }
-    Move[] OrderMoves(Board board, Move[] moves, Move firstMove, bool quiescence) {
-
+    Move[] OrderMoves(Board board, Move[] moves, Move firstMove) {
+        
         int[] scoreGuess = new int[moves.Length];
-        bool inCheck = board.IsInCheck();
 
         for (int i = 0; i < moves.Length; i++) {
             Move move = moves[i];
-
+            
             board.MakeMove(move);
             scoreGuess[i] -= (board.IsInCheck() ? 200 : 0)
                             + (move.IsPromotion ? PieceValues[(int)move.PromotionPieceType] : 0)
                             + (move.IsCapture ? scoreGuess[i] -= PieceValues[(int)move.CapturePieceType] - PieceValues[(int)move.MovePieceType] : 0)
                             + (move == firstMove ? 10000 : 0)
                             - ((GetPawnAttacks(move.StartSquare, !board.IsWhiteToMove) & board.GetPieceBitboard(PieceType.Pawn, board.IsWhiteToMove)) > 0 ? 500 : 0);
-            if (quiescence && (scoreGuess[i] <= 0 || inCheck)) {
-                moves[i] = NullMove;
-                scoreGuess[i] = 1073741823;
-            }
             board.UndoMove(move);
         }
         Array.Sort(scoreGuess, moves);
 
-        return moves.Where(move => move != NullMove).ToArray();
+        return moves;
     }
     int Evaluate(Board board) {
         int eval = 0;
@@ -197,21 +184,17 @@ public class MyBot : IChessBot {
 
                 ulong pieceAttacks = GetPieceAttacks(piece.PieceType, square, board, piece.IsWhite);
                 int squareAttackValues = 0;
-                
-                if (intPieceType < 4) {
-                    for (int i = 0; i < GetNumberOfSetBits(pieceAttacks); i++) {
-                        Square attackSquare = new(ClearAndGetIndexOfLSB(ref pieceAttacks));
-                        squareAttackValues += Lerp(Convert.ToInt32(attackSquare.Rank < 4 == piece.IsWhite) + 3 - ChebyshevDist(attackSquare), 4, endgameWeight);
-
-                    }
-                };
+                for (int i = 0; i < GetNumberOfSetBits(pieceAttacks); i++) {
+                    Square attackSquare = new Square(ClearAndGetIndexOfLSB(ref pieceAttacks));
+                    squareAttackValues += Lerp((attackSquare.Rank < 4 == piece.IsWhite ? 3 : 4) - ChebyshevDist(attackSquare), 4, endgameWeight);
+                    
+                }
                 switch (intPieceType) {
                     case 1:
                         // Interpolate from a center pawn push to an even pawn push as the game progresses
                         pieceEval += rank * Lerp(PawnPushValues[file], 20, endgameWeight) + 5 * squareAttackValues;
                         break;
-                    case 2:
-                    case 3:
+                    case 2: case 3:
                         pieceEval += GetNumberOfSetBits(pieceAttacks) * 5 + squareAttackValues;
                         break;
                     case 4:
@@ -239,10 +222,10 @@ public class MyBot : IChessBot {
         return board.IsWhiteToMove ? eval : -eval;
     }
 
-    double EndGameWeight(Board board) {
+    double EndGameWeight (Board board) {
         return Min(8.0 / board.GetAllPieceLists().Sum(x => x.Count), 1);
     }
-    int ChebyshevDist(Square square) {
+    int ChebyshevDist (Square square) {
         return Max(CenterDist(square.Rank), CenterDist(square.File));
     }
 
@@ -250,7 +233,7 @@ public class MyBot : IChessBot {
         return Max(3 - row, row - 4);
     }
     int Lerp(int a, int b, double t) {
-        return (int)(a + (b - a) * t);
+        return (int) (a + (b - a) * t);
     }
 
-}
+}*/
